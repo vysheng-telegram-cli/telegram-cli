@@ -42,13 +42,13 @@ Python support is currently limited to Python 2.7 or Python 3.1+. Other versions
 ## Usage
 
 ```
-bin/telegram-cli -k <public-server-key>
+./telegram-cli -k <public-server-key>
 ```
 
 By default, the public key is stored in tg-server.pub in the same folder or in /etc/telegram-cli/server.pub. If not, specify where to find it:
 
 ```
-bin/telegram-cli -k tg-server.pub
+./telegram-cli -k tg-server.pub
 ```
 
 Client support TAB completion and command history.
