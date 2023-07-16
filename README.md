@@ -1,175 +1,55 @@
-## Telegram messenger CLI
+# Telegram messenger CLI
 
 Command-line interface for [Telegram](http://telegram.org). Uses readline interface. It is client implementation of TGL library.
 
-> Note: This is a fork of [`telegram-cli`](https://github.com/vysheng/tg).
+> This is a fork of [kenorb's repository](https://github.com/kenorb-contrib/tg), who has been maintaining [vysheng's repository](https://github.com/vysheng/ tg) after he discontinued public development of this project.
 
-Build status:
-
-| Repository                                             | Status|
-| ------------------------------------------------------ | ----- |
-| [vysheng](https://github.com/vysheng/tg) (main)        |[![Build Status](https://travis-ci.org/vysheng/tg.png)](https://travis-ci.org/vysheng/tg)|
-| [kenorb-contrib](https://github.com/kenorb-contrib/tg) |[![Build Status](https://travis-ci.org/kenorb-contrib/tg.png)](https://travis-ci.org/kenorb-contrib/tg)|
-
-### API, Protocol documentation
+## API, Protocol documentation
 
 Documentation for Telegram API is available here: <http://core.telegram.org/api>
 
 Documentation for MTproto protocol is available here: <http://core.telegram.org/mtproto>
 
-### Upgrading to version 1.0
+## Building
 
-First of all, the binary is now in ./bin folder and is named telegram-cli. So be careful, not to use old binary.
+The preferred way of building telegram-cli is a [Docker container](https://github.com/vysheng-telegram-cli/docker-telegram-cli), however the native building instructions are also given below. 
 
-Second, config folder is now ${HOME}/.telegram-cli
+Clone this GitHub repository with `--recursive` parameter to clone submodules:
 
-Third, database is not compatible with older versions, so you'll have to login again.
+```
+git clone --recursive https://github.com/vysheng-telegram-cli/telegram-cli.git && cd tg
+```
 
-Fourth, in `peer_name` '#' are substitued to '@'. (Not applied to appending of '#%d' in case of two peers having same name).
+Prerequisites:
 
-### Installation
+```
+sudo apt-get install libreadline-dev libconfig-dev libssl-dev lua5.2 liblua5.2-dev libevent-dev libjansson-dev libpython-dev libpython3-dev libgcrypt-   dev zlib1g-dev lua-lgi make
+```
 
-Clone this GitHub repository with `--recursive` parameter to clone submodules.
+Compile with CMake:
 
-     git clone --recursive https://github.com/kenorb-contrib/tg.git && cd tg
+```
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
 
-### Python Support
+## Python Support
 
 Python support is currently limited to Python 2.7 or Python 3.1+. Other versions may work but are not tested.
 
-#### Linux and BSDs
+## Usage
 
-Install libs: readline, openssl and (if you want to use config) libconfig, liblua, python and libjansson.
-If you do not want to use them pass options --disable-libconfig, --disable-liblua, --disable-python and --disable-json respectively.
-
-On Ubuntu/Debian use:
-
-     sudo apt-get install libreadline-dev libconfig-dev libssl-dev lua5.2 liblua5.2-dev libevent-dev libjansson-dev libpython-dev libpython3-dev libgcrypt-dev zlib1g-dev lua-lgi make
-
-To build and install the packaege, run:
-     
-     dpkg-buildpackage -b
-     sudo dpkg -i ../telegram-cli_x.x.x-x_amd64.deb
-
-On Gentoo:
-
-     sudo emerge -av sys-libs/readline dev-libs/libconfig dev-libs/openssl dev-lang/lua dev-libs/libevent dev-libs/jansson dev-lang/python
-
-On Fedora:
-
-     sudo dnf install lua-devel openssl-devel libconfig-devel readline-devel libevent-devel jansson-devel python-devel libgcrypt-devel
-
-On CentOS:
-
-     sudo yum install lua-devel openssl-devel libconfig-devel readline-devel libevent-devel jansson-devel python-devel
-
-On Archlinux:
-
-     yay -S telegram-cli-git
-     
-On Milislinux:
-
-     mps kur telegram-cli
-
-On FreeBSD:
-
-     pkg install telegram-cli
-
-On OpenBSD:
-
-     pkg_add libconfig libexecinfo lua python
-
-On openSUSE:
-
-     sudo zypper in lua-devel libconfig-devel readline-devel libevent-devel libjansson-devel python-devel libopenssl-devel
-
-Then,
-
-     ./configure
-     make
-
-If you are going to build tg on OpenBSD or FreeBSD, please use `gmake` instead of `make`.
-
-#### Other methods to install on linux
-
-On Gentoo: use ebuild provided.
-
-On Arch: https://aur.archlinux.org/packages/telegram-cli-git
-
-#### Mac OS X
-
-The client depends on [readline library](http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html) and [libconfig](http://www.hyperrealm.com/libconfig/), which are not included in OS X by default. You have to install these libraries manually.
-
-If using [Homebrew](http://brew.sh/):
-
-     brew tap ivoputzer/tg
-     brew install tg
-
-or manually:
-
-     brew install libconfig readline lua python libevent jansson
-     export READLINEPATH=$(brew --prefix readline)
-     export OPENSSLPATH=$(brew --prefix openssl)
-     export CPPFLAGS="-I/usr/local/opt/openssl/include -I$READLINEPATH/include -W"
-     export CFLAGS="-I/usr/local/include -I$READLINEPATH/include -I$OPENSSLPATH/include"
-     export LDFLAGS="-L/usr/local/lib -L$READLINEPATH/lib -L$OPENSSLPATH/lib"
-
-     ./configure
-
-You might have to manually pass the location of OpenSSL to `configure`:
-
-    $ brew info openssl
-    openssl: stable 1.0.2e (bottled) [keg-only]
-    Poured from bottle /usr/local/Cellar/openssl/1.0.2e_1 (465 files, 11.9M)
-
-so in this case the configure should be run as:
-
-     ./configure --with-openssl=/usr/local/Cellar/openssl/1.0.2e_1
-
-in other cases OpenSSL could be found in `/usr/local/opt`, e.g.:
-
-     ./configure --with-openssl=/usr/local/opt/openssl
-
-If you get a LUA error on Sierra, you can configure without LUA using
-
-     ./configure --disable-liblua
-
-After configuration run build:
-
-    make
-
-Thanks to [@jfontan](https://github.com/vysheng/tg/issues/3#issuecomment-28293731) for this solution.
-
-If using [MacPorts](https://www.macports.org):
-
-     sudo port install libconfig-hr
-     sudo port install readline
-     sudo port install lua51
-     sudo port install python34
-     sudo port install libevent
-     export CFLAGS="-I/usr/local/include -I/opt/local/include -I/opt/local/include/lua-5.1"
-     export LDFLAGS="-L/usr/local/lib -L/opt/local/lib -L/opt/local/lib/lua-5.1"
-     ./configure && make
-
-#### Docker
-
-The set for dockerizing the app: https://github.com/semenyukdmitry/telegram_cli_docker.
-
-#### Other UNIX
-
-If you manage to launch it on other UNIX, please let me know.
-
-### Contacts
-If you would like to ask a question, you can write to my telegram or to the github (or both). To contact me via telegram, you should use import_card method with argument 000653bf:0738ca5d:5521fbac:29246815:a27d0cda
-
-
-### Usage
-
-    bin/telegram-cli -k <public-server-key>
+```
+bin/telegram-cli -k <public-server-key>
+```
 
 By default, the public key is stored in tg-server.pub in the same folder or in /etc/telegram-cli/server.pub. If not, specify where to find it:
 
-    bin/telegram-cli -k tg-server.pub
+```
+bin/telegram-cli -k tg-server.pub
+```
 
 Client support TAB completion and command history.
 
@@ -180,9 +60,9 @@ For encrypted chats it is <Exсlamation mark> <underscore> Name <underscore> Las
 
 If two or more peers have same name, <sharp>number is appended to the name. (for example A_B, A_B#1, A_B#2 and so on)
 
-### Supported commands
+## Supported commands
 
-#### Messaging
+### Messaging
 
 * **msg** \<peer\> Text - sends message to this peer
 * **fwd** \<user\> \<msg-seqno\> - forward message to user. You can see message numbers starting client with -N
@@ -193,7 +73,7 @@ If two or more peers have same name, <sharp>number is appended to the name. (for
 * **delete_msg** \<msg-seqno\> - deletes message (not completly, though)
 * **restore_msg** \<msg-seqno\> - restores delete message. Impossible for secret chats. Only possible short time (one hour, I think) after deletion
 
-#### Multimedia
+### Multimedia
 
 * **send_photo** \<peer\> \<photo-file-name\> - sends photo to peer
 * **send_video** \<peer\> \<video-file-name\> - sends video to peer
@@ -204,8 +84,7 @@ If two or more peers have same name, <sharp>number is appended to the name. (for
 * **fwd_media** \<msg-seqno\> send media in your message. Use this to prevent sharing info about author of media (though, it is possible to determine user_id from media itself, it is not possible get access_hash of this user)
 * **set_profile_photo** \<photo-file-name\> - sets userpic. Photo should be square, or server will cut biggest central square part
 
-
-#### Group chat options
+### Group chat options
 
 * **chat_info** \<chat\> - prints info about chat
 * **chat_add_user** \<chat\> \<user\> - add user to chat
@@ -229,19 +108,19 @@ If two or more peers have same name, <sharp>number is appended to the name. (for
 * **channel_set_photo** \<channel\> \<filename\>	- Sets channel photo. Photo will be cropped to square
 * **channel_set_username** \<channel\> \<username\>	 -Sets channel username info.
 
-#### Search
+### Search
 
 * **search** \<peer\> pattern - searches pattern in messages with peer
 * **global_search** pattern - searches pattern in all messages
 
-#### Secret chat
+### Secret chat
 
 * **create_secret_chat** \<user\> - creates secret chat with this user
 * **visualize_key** \<secret_chat\> - prints visualization of encryption key. You should compare it to your partner's one
 * **set_ttl** \<secret_chat\> \<ttl\> - sets ttl to secret chat. Though client does ignore it, client on other end can make use of it
 * **accept_secret_chat** \<secret_chat\> - manually accept secret chat (only useful when starting with -E key)
 
-#### Stats and various info
+### Stats and various info
 
 * **user_info** \<user\> - prints info about user
 * **history** \<peer\> [limit] - prints history (and marks it as read). Default limit = 40
@@ -253,14 +132,16 @@ If two or more peers have same name, <sharp>number is appended to the name. (for
 * **help** - prints this help
 * **get_self** - get our user info
 
-#### Card
+### Card
 * **export_card** - print your 'card' that anyone can later use to import your contact
 * **import_card** \<card\> - gets user by card. You can write messages to him after that.
 
-#### Other
+### Other
 * **quit** - quit
 * **safe_quit** - wait for all queries to end then quit
 * run `telegram-cli -q` to logout from account
 
-#### Troubleshooting
+## Troubleshooting
+
 * if you got error: `get error FAIL: 38: can not parse arg #1` it maybe be unresolved username. You should use `resolve_username channel/group/user_name` before running action with it. [See this issue for more info](https://github.com/vysheng/tg/issues/823)
+
