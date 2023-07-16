@@ -49,9 +49,7 @@
 #include <execinfo.h>
 #endif
 #include <signal.h>
-#ifdef HAVE_LIBCONFIG
 #include <libconfig.h>
-#endif
 
 #include <grp.h>
 #include <arpa/inet.h>
@@ -295,7 +293,6 @@ void running_for_first_time (void) {
   }
 }
 
-#ifdef HAVE_LIBCONFIG
 void parse_config_val (config_t *conf, char **s, char *param_name, const char *default_name, const char *path) {
   static char buf[1000]; 
   int l = 0;
@@ -424,32 +421,6 @@ void parse_config (void) {
   config_directory = NULL;
   config_destroy (&conf);
 }
-#else
-void parse_config (void) {
-  if (!disable_output) {
-    printf ("libconfig not enabled\n");
-  }
-  tasprintf (&downloads_directory, "%s/%s/%s", get_home_directory (), CONFIG_DIRECTORY, DOWNLOADS_DIRECTORY);
-
-  if (binlog_enabled) {
-    tasprintf (&binlog_file_name, "%s/%s/%s", get_home_directory (), CONFIG_DIRECTORY, BINLOG_FILE);
-    tgl_set_binlog_mode (TLS, 1);
-    tgl_set_binlog_path (TLS, binlog_file_name);
-  } else {
-    tgl_set_binlog_mode (TLS, 0);
-    //tgl_set_auth_file_path (auth_file_name;
-    tasprintf (&auth_file_name, "%s/%s/%s", get_home_directory (), CONFIG_DIRECTORY, AUTH_KEY_FILE);
-    tasprintf (&state_file_name, "%s/%s/%s", get_home_directory (), CONFIG_DIRECTORY, STATE_FILE);
-    tasprintf (&secret_chat_file_name, "%s/%s/%s", get_home_directory (), CONFIG_DIRECTORY, SECRET_CHAT_FILE);
-  }
-  tgl_set_download_directory (TLS, downloads_directory);
-  if (!mkdir (downloads_directory, CONFIG_DIRECTORY_MODE)) {
-    if (!disable_output) {
-      printf ("[%s] created\n", downloads_directory);
-    }
-  }
-}
-#endif
 
 void inner_main (void) {
   loop ();
@@ -462,15 +433,9 @@ void usage (void) {
   printf ("  --rsa-key/-k                         specify location of public key (possible multiple entries)\n");
   printf ("  --verbosity/-v                       increase verbosity (0-ERROR 1-WARNIN 2-NOTICE 3+-DEBUG-levels)\n");
   printf ("  --enable-msg-id/-N                   message num mode\n");
-  #ifdef HAVE_LIBCONFIG
   printf ("  --config/-c                          config file name\n");
   printf ("  --force-config-dir/-x                set force config dir instead of profile\n");
   printf ("  --profile/-p                         use specified profile\n");
-  #else
-  #if 0
-  printf ("  --enable-binlog/-B                   enable binlog\n");
-  #endif
-  #endif
   printf ("  --log-level/-l                       log level\n");
   printf ("  --sync-from-start/-f                 during authorization fetch all messages since registration\n");
   printf ("  --disable-auto-accept/-E             disable auto accept of encrypted chats\n");
@@ -619,15 +584,9 @@ void args_parse (int argc, char **argv) {
     {"rsa-key", required_argument, 0, 'k'},
     {"verbosity", no_argument, 0, 'v'},
     {"enable-msg-id", no_argument, 0, 'N'},
-#ifdef HAVE_LIBCONFIG
     {"config", required_argument, 0, 'c'},
     {"force-config-dir", required_argument, 0, 'X'},
     {"profile", required_argument, 0, 'p'},
-#else
-    #if 0
-    {"enable-binlog", no_argument, 0, 'B'},
-    #endif
-#endif
     {"log-level", required_argument, 0, 'l'},
     {"sync-from-start", no_argument, 0, 'f'},
     {"disable-auto-accept", no_argument, 0, 'E'},
@@ -666,13 +625,7 @@ void args_parse (int argc, char **argv) {
 
   int opt = 0;
   while ((opt = getopt_long (argc, argv, "u:hk:vNl:fEwWCRAMdL:DU:G:qP:X:S:e:I6b"
-#ifdef HAVE_LIBCONFIG
   "c:p:"
-#else
-  #if 0
-  "B"
-  #endif
-#endif
 #ifdef USE_LUA
   "s:"
 #endif
@@ -709,7 +662,6 @@ void args_parse (int argc, char **argv) {
     case 'N':
       msg_num_mode ++;
       break;
-#ifdef HAVE_LIBCONFIG
     case 'c':
       config_filename = tstrdup (optarg);
       break;
@@ -720,13 +672,6 @@ void args_parse (int argc, char **argv) {
       prefix = optarg;
       assert (strlen (prefix) <= 100);
       break;
-#else
-    #if 0
-    case 'B':
-      binlog_enabled = 1;
-      break;
-    #endif
-#endif
     case 'l':
       log_level = atoi (optarg);
       break;

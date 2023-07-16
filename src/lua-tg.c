@@ -27,12 +27,7 @@
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
-#ifdef EVENT_V2
 #include <event2/event.h>
-#else
-#include <event.h>
-#include "event-old.h"
-#endif
 lua_State *luaState;
 
 //#include "interface.h"

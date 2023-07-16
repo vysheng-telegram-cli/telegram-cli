@@ -50,17 +50,9 @@
 #include "interface.h"
 #include "telegram.h"
 
-#ifdef EVENT_V2
 #include <event2/event.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
-#else
-#include <event.h>
-#include "event-old.h"
-#endif
-//#include "auto/constants.h"
-//#include "tools.h"
-//#include "structures.h"
 
 #ifdef USE_LUA
 #  include "lua-tg.h"
@@ -757,16 +749,6 @@ void do_stats (struct command *command, int arg_num, struct arg args[], struct i
   if (!ev) {
     fflush (stdout);
   }
-}
-
-void do_show_license (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
-  assert (!arg_num);
-  static char *b =
-#include "LICENSE.h"
-  ;
-  if (ev) { mprint_start (ev); }
-  mprintf (ev, "%s", b);
-  if (ev) { mprint_end (ev); }
 }
 
 void do_quit (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
@@ -1778,7 +1760,6 @@ struct command commands[MAX_COMMANDS_SIZE] = {
   {"set_ttl", {ca_secret_chat, ca_number,  ca_none}, do_set_ttl, "set_ttl <secret chat>\tSets secret chat ttl. Client itself ignores ttl", NULL},
   {"set_username", {ca_string, ca_none}, do_set_username, "set_username <name>\tSets username.", NULL},
   {"set_phone_number", {ca_string, ca_none}, do_set_phone_number, "set_phone_number <phone>\tChanges the phone number of this account", NULL},
-  {"show_license", {ca_none}, do_show_license, "show_license\tPrints contents of GPL license", NULL},
   {"start_bot", {ca_user, ca_chat, ca_string, ca_none}, do_start_bot, "start_bot <bot> <chat> <data>\tAdds bot to chat", NULL},
   {"stats", {ca_none}, do_stats, "stats\tFor debug purpose", NULL},
   {"status_online", {ca_none}, do_status_online, "status_online\tSets status as online", NULL},
