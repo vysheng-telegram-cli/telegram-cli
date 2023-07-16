@@ -2,7 +2,7 @@
 
 Command-line interface for [Telegram](http://telegram.org). Uses readline interface. It is client implementation of TGL library.
 
-> This is a fork of [kenorb's repository](https://github.com/kenorb-contrib/tg), who has been maintaining [vysheng's repository](https://github.com/vysheng/ tg) after he discontinued public development of this project.
+> This is a fork of [kenorb's repository](https://github.com/kenorb-contrib/tg), who has been maintaining [vysheng's repository](https://github.com/vysheng/tg) after he discontinued public development of this project.
 
 ## API, Protocol documentation
 
