@@ -21,10 +21,6 @@
 #include "config.h"
 #endif
 
-#ifdef USE_PYTHON
-#  include "python-tg.h"
-#endif
-
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -62,11 +58,6 @@
 #include <getopt.h>
 #include <tgl/mtproto-key.h>
 
-#ifdef USE_LUA
-#  include "lua-tg.h"
-#endif
-
-
 #include <tgl/tgl.h>
 
 #define PROGNAME "telegram-cli"
@@ -100,8 +91,6 @@ char *downloads_directory;
 char *config_directory;
 char *config_directory_force;
 char *binlog_file_name;
-char *lua_file;
-char *python_file;
 int binlog_enabled;
 extern int log_level;
 int sync_from_start;
@@ -115,7 +104,6 @@ int use_ids;
 int ipv6_enabled;
 char *start_command;
 int disable_link_preview;
-int enable_json;
 int alert_sound;
 int auto_mark_read;
 int exit_code;
@@ -373,14 +361,6 @@ void parse_config (void) {
   parse_config_val (&conf, &auth_file_name, "auth_file", AUTH_KEY_FILE, config_directory);
   parse_config_val (&conf, &downloads_directory, "downloads", DOWNLOADS_DIRECTORY, config_directory);
   
-  if (!lua_file) {
-    parse_config_val (&conf, &lua_file, "lua_script", 0, config_directory);
-  }
-  
-  if (!python_file) {
-    parse_config_val (&conf, &python_file, "python_script", 0, config_directory);
-  }
- 
   #if 0
   strcpy (buf + l, "binlog_enabled");
   config_lookup_bool (&conf, buf, &binlog_enabled);
@@ -439,9 +419,6 @@ void usage (void) {
   printf ("  --log-level/-l                       log level\n");
   printf ("  --sync-from-start/-f                 during authorization fetch all messages since registration\n");
   printf ("  --disable-auto-accept/-E             disable auto accept of encrypted chats\n");
-  #ifdef USE_LUA
-  printf ("  --lua-script/-s                      lua script file\n");
-  #endif
   printf ("  --wait-dialog-list/-W                send dialog_list query and wait for answer before reading input\n");
   printf ("  --disable-colors/-C                  disable color output\n");
   printf ("  --disable-readline/-R                disable readline\n");
@@ -461,12 +438,6 @@ void usage (void) {
   printf ("  --accept-any-tcp                     accepts tcp connections from any src (only loopback by default)\n");
   printf ("  --disable-link-preview               disables server-side previews to links\n");
   printf ("  --bot/-b                             bot mode\n");  
-  #ifdef USE_JSON
-  printf ("  --json                               prints answers and values in json format\n");
-  #endif
-  #ifdef USE_PYTHON
-  printf ("  --python-script/-Z <script-name>     python script file\n");
-  #endif
   printf ("  --permanent-msg-ids                  use permanent msg ids\n");
   printf ("  --permanent-peer-ids                 use permanent peer ids\n");
 
@@ -591,9 +562,6 @@ void args_parse (int argc, char **argv) {
     {"sync-from-start", no_argument, 0, 'f'},
     {"disable-auto-accept", no_argument, 0, 'E'},
     {"allow-weak-random", no_argument, 0, 'w'},
-#ifdef USE_LUA
-    {"lua-script", required_argument, 0, 's'},
-#endif
     {"wait-dialog-list", no_argument, 0, 'W'},
     {"disable-colors", no_argument, 0, 'C'},
     {"disable-readline", no_argument, 0, 'R'},
@@ -614,8 +582,6 @@ void args_parse (int argc, char **argv) {
     {"help", no_argument, 0, 'h'},
     {"accept-any-tcp", no_argument, 0,  1001},
     {"disable-link-preview", no_argument, 0, 1002},
-    {"json", no_argument, 0, 1003},
-    {"python-script", required_argument, 0, 'Z'},
     {"permanent-msg-ids", no_argument, 0, 1004},
     {"permanent-peer-ids", no_argument, 0, 1005},
     {0,         0,                 0,  0 }
@@ -626,12 +592,6 @@ void args_parse (int argc, char **argv) {
   int opt = 0;
   while ((opt = getopt_long (argc, argv, "u:hk:vNl:fEwWCRAMdL:DU:G:qP:X:S:e:I6b"
   "c:p:"
-#ifdef USE_LUA
-  "s:"
-#endif
-#ifdef USE_PYTHON
-  "Z:"
-#endif
   , long_options, NULL
   
   )) != -1) {
@@ -684,19 +644,9 @@ void args_parse (int argc, char **argv) {
     case 'w':
       allow_weak_random = 1;
       break;
-#ifdef USE_LUA
-    case 's':
-      lua_file = strdup (optarg);
-      break;
-#endif
     case 'W':
       wait_dialog_list = 1;
       break;
-#ifdef USE_PYTHON
-    case 'Z':
-      python_file = strdup (optarg);
-      break;
-#endif
     case 'C':
       disable_colors ++;
       break;
@@ -745,9 +695,6 @@ void args_parse (int argc, char **argv) {
     case 1002:
       disable_link_preview = 2;
       break;
-    case 1003:
-      enable_json = 1;
-      break;
     case 1004:
       permanent_msg_id_mode = 1;
       break;
@@ -770,7 +717,7 @@ void print_backtrace (void) {
 }
 #else
 void print_backtrace (void) {
-  if (write (1, "No libexec. Backtrace disabled\n", 32) < 0) {
+  if (fprintf (stderr, "No libexec. Backtrace disabled\n") < 0) {
     // Sad thing
   }
 }
@@ -785,7 +732,7 @@ void termination_signal_handler (int signum) {
     rl_cleanup_after_signal ();
   }
   
-  if (write (1, "SIGNAL received\n", 18) < 0) { 
+  if (fprintf (stderr, "SIGNAL received\n") < 0) { 
     // Sad thing
   }
  
@@ -809,7 +756,7 @@ volatile int sigterm_cnt;
 void sig_term_handler (int signum __attribute__ ((unused))) {
   signal (signum, termination_signal_handler);
   //set_terminal_attributes ();
-  if (write (1, "SIGTERM/SIGINT received\n", 25) < 0) { 
+  if (fprintf (stderr, "SIGTERM/SIGINT received\n") < 0) { 
     // Sad thing
   }
   //if (TLS && TLS->ev_base) {
@@ -829,7 +776,7 @@ void do_halt (int error) {
     rl_cleanup_after_signal ();
   }
 
-  if (write (1, "halt\n", 5) < 0) { 
+  if (fprintf (stderr, "halt\n") < 0) { 
     // Sad thing
   }
  
@@ -946,9 +893,6 @@ int main (int argc, char **argv) {
       "Telegram-cli includes software developed by the OpenSSL Project\n"
       "for use in the OpenSSL Toolkit. (http://www.openssl.org/)\n"
 #endif
-#ifdef USE_PYTHON
-      "Telegram-cli uses libpython version " PY_VERSION "\n"
-#endif
     );
   }
   running_for_first_time ();
@@ -964,18 +908,6 @@ int main (int argc, char **argv) {
   tgl_set_rsa_key_direct (TLS, tglmp_get_default_e (), tglmp_get_default_key_len (), tglmp_get_default_key ());
 
   get_terminal_attributes ();
-
-  #ifdef USE_LUA
-  if (lua_file) {
-    lua_init (lua_file);
-  }
-  #endif
-  #ifdef USE_PYTHON
-  if (python_file) {
-    py_init (python_file);
-  }
-  #endif
-
 
   inner_main ();
   

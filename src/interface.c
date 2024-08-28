@@ -21,10 +21,6 @@
 #include "config.h"
 #endif
 
-#ifdef USE_PYTHON
-#  include "python-tg.h"
-#endif
-
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -45,21 +41,12 @@
 #endif
 #include <unistd.h>
 
-//#include "queries.h"
-
 #include "interface.h"
 #include "telegram.h"
 
 #include <event2/event.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
-
-#ifdef USE_LUA
-#  include "lua-tg.h"
-#endif
-
-
-//#include "mtproto-common.h"
 
 #include <tgl/tgl.h>
 #include <tgl/tgl-queries.h>
@@ -73,11 +60,6 @@
 #define OPEN_BIN "open %s"
 #else
 #define OPEN_BIN "xdg-open %s"
-#endif
-
-#ifdef USE_JSON
-#  include <jansson.h>
-#  include "json-tg.h"
 #endif
 
 #include "tgl/mtproto-common.h"
@@ -109,7 +91,6 @@ extern char one_string[];
 extern int one_string_len;
 extern char *one_string_prompt;
 extern int one_string_flags;
-extern int enable_json;
 int disable_auto_accept;
 int msg_num_mode;
 int permanent_msg_id_mode;
@@ -1626,8 +1607,6 @@ extern char *secret_chat_file_name;
 extern char *downloads_directory;
 extern char *config_directory;
 extern char *binlog_file_name;
-extern char *lua_file;
-extern char *python_file;
 extern struct event *term_ev;
 
 void do_clear (struct command *command, int arg_num, struct arg args[], struct in_ev *ev) {
@@ -1641,8 +1620,6 @@ void do_clear (struct command *command, int arg_num, struct arg args[], struct i
   tfree_str (downloads_directory);
   //tfree_str (config_directory);
   tfree_str (binlog_file_name);
-  tfree_str (lua_file);
-  tfree_str (python_file);
   if (home_directory) {
     tfree_str (home_directory);
   }
@@ -2264,20 +2241,7 @@ void work_modifier (const char *s, int l) {
 
 void print_fail (struct in_ev *ev) {
   mprint_start (ev);
-  if (!enable_json) {
-    mprintf (ev, "FAIL: %d: %s\n", TLS->error_code, TLS->error);
-  } else {
-  #ifdef USE_JSON
-    json_t *res = json_object ();
-    assert (json_object_set_new (res, "result", json_string ("FAIL")) >= 0);
-    assert (json_object_set_new (res, "error_code", json_integer (TLS->error_code)) >= 0);
-    assert (json_object_set_new (res, "error", json_string (TLS->error ? TLS->error : "")) >= 0);
-    char *s = json_dumps (res, 0);
-    mprintf (ev, "%s\n", s);
-    json_decref (res);
-    free (s);
-  #endif
-  }
+  mprintf (ev, "FAIL: %d: %s\n", TLS->error_code, TLS->error);
   mprint_end (ev);
 }
 
@@ -2292,38 +2256,14 @@ void fail_interface (struct tgl_state *TLS, struct in_ev *ev, int error_code, co
   error[error_len] = 0;
 
   mprint_start (ev);
-  if (!enable_json) {
-    mprintf (ev, "FAIL: %d: %s\n", error_code, error);
-  } else {
-  #ifdef USE_JSON
-    json_t *res = json_object ();
-    assert (json_object_set_new (res, "result", json_string ("FAIL")) >= 0);
-    assert (json_object_set_new (res, "error_code", json_integer (error_code)) >= 0);
-    assert (json_object_set_new (res, "error", json_string (error)) >= 0);
-    char *s = json_dumps (res, 0);
-    mprintf (ev, "%s\n", s);
-    json_decref (res);
-    free (s);
-  #endif
-  }
+  mprintf (ev, "FAIL: %d: %s\n", error_code, error);
   mprint_end (ev);
 }
 
 void print_success (struct in_ev *ev) {
-  if (ev || enable_json) {
+  if (ev) {
     mprint_start (ev);
-    if (!enable_json) {
-      mprintf (ev, "SUCCESS\n");
-    } else {
-      #ifdef USE_JSON
-        json_t *res = json_object ();
-        assert (json_object_set_new (res, "result", json_string ("SUCCESS")) >= 0);
-        char *s = json_dumps (res, 0);
-        mprintf (ev, "%s\n", s);
-        json_decref (res);
-        free (s);
-      #endif
-    }
+    mprintf (ev, "SUCCESS\n");
     mprint_end (ev);
   }
 }
@@ -2364,36 +2304,11 @@ void print_msg_list_gw (struct tgl_state *TLSR, void *extra, int success, int nu
   if (!success) { print_fail (ev); return; }
 
   mprint_start (ev);
-  if (!enable_json) {
+  {
     int i;
     for (i = num - 1; i >= 0; i--) {
-      #ifdef USE_LUA
-        lua_list_msg (ML[i]);
-      #endif
-      #ifdef USE_PYTHON
-        py_list_msg (ML[i]);
-      #endif
       print_message (ev, ML[i]);
     }
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_array ();
-      int i;
-      for (i = num - 1; i >= 0; i--) {
-        #ifdef USE_LUA
-          lua_list_msg (ML[i]);
-        #endif
-        #ifdef USE_PYTHON
-          py_list_msg (ML[i]);
-        #endif
-        json_t *a = json_pack_message (ML[i]);
-        assert (json_array_append_new (res, a) >= 0);
-      }
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
   }
   mprint_end (ev);
 }
@@ -2418,17 +2333,7 @@ void print_msg_gw (struct tgl_state *TLSR, void *extra, int success, struct tgl_
   }
   if (!success) { print_fail (ev); return; }
   mprint_start (ev);
-  if (!enable_json) {
-    print_message (ev, M);
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_pack_message (M);
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
-  }
+  print_message (ev, M);
   mprint_end (ev);
 }
 
@@ -2441,25 +2346,12 @@ void print_user_list_gw (struct tgl_state *TLSR, void *extra, int success, int n
   }
   if (!success) { print_fail (ev); return; }
   mprint_start (ev);
-  if (!enable_json) {
+  {
     int i;
     for (i = num - 1; i >= 0; i--) {
       print_user_name (ev, UL[i]->id, (void *)UL[i]);
       mprintf (ev, "\n");
     }
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_array ();
-      int i;
-      for (i = num - 1; i >= 0; i--) {
-        json_t *a = json_pack_peer (UL[i]->id);
-        assert (json_array_append_new (res, a) >= 0);
-      }
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
   }
   mprint_end (ev);
 }
@@ -2473,18 +2365,8 @@ void print_user_gw (struct tgl_state *TLSR, void *extra, int success, struct tgl
   }
   if (!success) { print_fail (ev); return; }
   mprint_start (ev);
-  if (!enable_json) {
-    print_user_name (ev, U->id, (void *)U);
-    mprintf (ev, "\n");
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_pack_peer (U->id);
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
-  }
+  print_user_name (ev, U->id, (void *)U);
+  mprintf (ev, "\n");
   mprint_end (ev);
 }
 
@@ -2497,18 +2379,8 @@ void print_chat_gw (struct tgl_state *TLSR, void *extra, int success, struct tgl
   }
   if (!success) { print_fail (ev); return; }
   mprint_start (ev);
-  if (!enable_json) {
-    print_chat_name (ev, U->id, (void *)U);
-    mprintf (ev, "\n");
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_pack_peer (U->id);
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
-  }
+  print_chat_name (ev, U->id, (void *)U);
+  mprintf (ev, "\n");
   mprint_end (ev);
 }
 
@@ -2521,18 +2393,8 @@ void print_channel_gw (struct tgl_state *TLSR, void *extra, int success, struct 
   }
   if (!success) { print_fail (ev); return; }
   mprint_start (ev);
-  if (!enable_json) {
-    print_channel_name (ev, U->id, (void *)U);
-    mprintf (ev, "\n");
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_pack_peer (U->id);
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
-  }
+  print_channel_name (ev, U->id, (void *)U);
+  mprintf (ev, "\n");
   mprint_end (ev);
 }
 
@@ -2566,19 +2428,7 @@ void print_filename_gw (struct tgl_state *TLSR, void *extra, int success, const 
   }
   if (!success) { print_fail (ev); return; }
   mprint_start (ev);
-  if (!enable_json) {
-    mprintf (ev, "Saved to %s\n", name);
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_object ();
-      assert (json_object_set_new (res, "result", json_string (name)) >= 0);
-      assert (json_object_set_new (res, "event", json_string ("download")) >= 0);
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
-  }
+  mprintf (ev, "Saved to %s\n", name);
   mprint_end (ev);
 }
 
@@ -2591,18 +2441,7 @@ void print_string_gw (struct tgl_state *TLSR, void *extra, int success, const ch
   }
   if (!success) { print_fail (ev); return; }
   mprint_start (ev);
-  if (!enable_json) {
-    mprintf (ev, "%s\n", name);
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_object ();
-      assert (json_object_set_new (res, "result", json_string (name)) >= 0);
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
-  }
+  mprintf (ev, "%s\n", name);
   mprint_end (ev);
 }
 
@@ -2635,9 +2474,9 @@ void print_chat_info_gw (struct tgl_state *TLSR, void *extra, int success, struc
     return;
   }
   if (!success) { print_fail (ev); return; }
-  mprint_start (ev);
 
-  if (!enable_json) {
+  mprint_start (ev);
+  {
     tgl_peer_t *U = (void *)C;
     mpush_color (ev, COLOR_YELLOW);
     mprintf (ev, "Chat ");
@@ -2657,16 +2496,7 @@ void print_chat_info_gw (struct tgl_state *TLSR, void *extra, int success, struc
       mprintf (ev, "\n");
     }
     mpop_color (ev);
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_pack_peer (C->id);
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
   }
-
   mprint_end (ev);
 }
 
@@ -2678,9 +2508,9 @@ void print_channel_info_gw (struct tgl_state *TLSR, void *extra, int success, st
     return;
   }
   if (!success) { print_fail (ev); return; }
-  mprint_start (ev);
 
-  if (!enable_json) {
+  mprint_start (ev);
+  {
     tgl_peer_t *U = (void *)C;
     mpush_color (ev, COLOR_YELLOW);
     mprintf (ev, "Channel ");
@@ -2704,21 +2534,11 @@ void print_channel_info_gw (struct tgl_state *TLSR, void *extra, int success, st
     mprintf (ev, "\tabout: %s\n", C->about);
     mprintf (ev, "\t%d participants, %d admins, %d kicked\n", C->participants_count, C->admins_count, C->kicked_count);
     mpop_color (ev);
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_pack_peer (C->id);
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
   }
-
   mprint_end (ev);
 }
 
 void print_user_status (struct tgl_user_status *S, struct in_ev *ev) {
-  assert(!enable_json); //calling functions print_user_info_gw() and user_status_upd() already check.
   if (S->online > 0) {
     mprintf (ev, "online (was online ");
     print_date_full (ev, S->when);
@@ -2748,9 +2568,10 @@ void print_user_info_gw (struct tgl_state *TLSR, void *extra, int success, struc
     return;
   }
   if (!success) { print_fail (ev); return; }
+
   mprint_start (ev);
   tgl_peer_t *C = (void *)U;
-  if (!enable_json) {
+  {
     mpush_color (ev, COLOR_YELLOW);
     mprintf (ev, "User ");
     print_user_name (ev, U->id, C);
@@ -2774,14 +2595,6 @@ void print_user_info_gw (struct tgl_state *TLSR, void *extra, int success, struc
       }
     }
     mpop_color (ev);
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_pack_peer (U->id);
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
   }
   mprint_end (ev);
 }
@@ -2794,21 +2607,14 @@ void print_secret_chat_gw (struct tgl_state *TLSR, void *extra, int success, str
     return;
   }
   if (!success) { print_fail (ev); return; }
+
   mprint_start (ev);
-  if (!enable_json) {
+  {
     mpush_color (ev, COLOR_YELLOW);
     mprintf (ev, " Encrypted chat ");
     print_encr_chat_name (ev, E->id, (void *)E);
     mprintf (ev, " is now in wait state\n");
     mpop_color (ev);
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_pack_peer (E->id);
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
   }
   mprint_end (ev);
 }
@@ -2821,8 +2627,9 @@ void print_dialog_list_gw (struct tgl_state *TLSR, void *extra, int success, int
     return;
   }
   if (!success) { print_fail (ev); return; }
+
   mprint_start (ev);
-  if (!enable_json)  {
+  {
     mpush_color (ev, COLOR_YELLOW);
     int i;
     for (i = size - 1; i >= 0; i--) {
@@ -2849,20 +2656,6 @@ void print_dialog_list_gw (struct tgl_state *TLSR, void *extra, int success, int
       }
     }
     mpop_color (ev);
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_array ();
-      int i;
-      for (i = size - 1; i >= 0; i--) {
-        json_t *a = json_pack_peer (peers[i]);
-        assert (json_object_set_new (a, "unread", json_integer (unread_count[i])) >= 0);
-        assert (json_array_append_new (res, a) >= 0);
-      }
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
   }
   mprint_end (ev);
 }
@@ -2905,15 +2698,6 @@ void print_read_list (int num, struct tgl_message *list[]) {
   int i;
   mprint_start (ev);
   for (i = 0; i < num; i++) if (list[i]) {
-    if (enable_json) {
-      #ifdef USE_JSON
-        json_t *res = json_pack_read (list[i]);
-        char *s = json_dumps (res, 0);
-        mprintf (ev, "%s\n", s);
-        json_decref (res);
-        free (s);
-      #endif
-    }
     tgl_peer_id_t to_id;
     if (!tgl_cmp_peer_id (list[i]->to_id, TLS->our_id)) {
       to_id = list[i]->from_id;
@@ -2941,7 +2725,7 @@ void print_read_list (int num, struct tgl_message *list[]) {
     }
 
     assert (c1 + c2 > 0);
-    if (!enable_json)  {
+    {
       mpush_color (ev, COLOR_YELLOW);
       switch (tgl_get_peer_type (to_id)) {
       case TGL_PEER_USER:
@@ -3043,7 +2827,6 @@ void print_typing (struct in_ev *ev, enum tgl_typing_status status) {
 void type_notification_upd (struct tgl_state *TLSR, struct tgl_user *U, enum tgl_typing_status status) {
   assert (TLSR == TLS);
   if (log_level < 2 || (disable_output && !notify_ev)) { return; }
-  if (enable_json) { return; }
   struct in_ev *ev = notify_ev;
   mprint_start (ev);
   mpush_color (ev, COLOR_YELLOW);
@@ -3059,7 +2842,6 @@ void type_notification_upd (struct tgl_state *TLSR, struct tgl_user *U, enum tgl
 void type_in_chat_notification_upd (struct tgl_state *TLSR, struct tgl_user *U, struct tgl_chat *C, enum tgl_typing_status status) {
   assert (TLSR == TLS);
   if (log_level < 2 || (disable_output && !notify_ev)) { return; }
-  if (enable_json) { return; }
   struct in_ev *ev = notify_ev;
   mprint_start (ev);
   mpush_color (ev, COLOR_YELLOW);
@@ -3077,12 +2859,6 @@ void type_in_chat_notification_upd (struct tgl_state *TLSR, struct tgl_user *U, 
 
 void print_message_gw (struct tgl_state *TLSR, struct tgl_message *M) {
   assert (TLSR == TLS);
-  #ifdef USE_LUA
-    lua_new_msg (M);
-  #endif
-  #ifdef USE_PYTHON
-    py_new_msg (M);
-  #endif
   if (!binlog_read) { return; }
   if (tgl_get_peer_type (M->to_id) == TGL_PEER_ENCR_CHAT) {
     write_secret_chat_file ();
@@ -3093,28 +2869,12 @@ void print_message_gw (struct tgl_state *TLSR, struct tgl_message *M) {
   if (disable_output && !notify_ev) { return; }
   struct in_ev *ev = notify_ev;
   mprint_start (ev);
-  if (!enable_json) {
-    print_message (ev, M);
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_pack_message (M);
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
-  }
+  print_message (ev, M);
   mprint_end (ev);
 }
 
 void our_id_gw (struct tgl_state *TLSR, tgl_peer_id_t id) {
   assert (TLSR == TLS);
-  #ifdef USE_LUA
-    lua_our_id (id);
-  #endif
-  #ifdef USE_PYTHON
-    py_our_id (tgl_get_peer_id (id));
-  #endif
 }
 
 void print_peer_updates (struct in_ev *ev, int flags) {
@@ -3165,19 +2925,6 @@ void print_peer_updates (struct in_ev *ev, int flags) {
   }
 }
 
-void json_peer_update (struct in_ev *ev, tgl_peer_t *P, unsigned flags) {
-  #ifdef USE_JSON
-    json_t *res = json_object ();
-    assert (json_object_set_new (res, "event", json_string ("updates")) >= 0);
-    assert (json_object_set_new (res, "peer", json_pack_peer (P->id)) >= 0);
-    assert (json_object_set_new (res, "updates", json_pack_updates (flags)) >= 0);
-    char *s = json_dumps (res, 0);
-    mprintf (ev, "%s\n", s);
-    json_decref (res);
-    free (s);
-  #endif
-}
-
 void peer_update_username (tgl_peer_t *P, const char *username) {
   if (!username) {
     if (P->extra) {
@@ -3213,12 +2960,6 @@ void peer_update_username (tgl_peer_t *P, const char *username) {
 
 void user_update_gw (struct tgl_state *TLSR, struct tgl_user *U, unsigned flags) {
   assert (TLSR == TLS);
-  #ifdef USE_LUA
-    lua_user_update (U, flags);
-  #endif
-  #ifdef USE_PYTHON
-    py_user_update (U, flags);
-  #endif
 
   peer_update_username ((void *)U, U->username);
 
@@ -3228,7 +2969,7 @@ void user_update_gw (struct tgl_state *TLSR, struct tgl_user *U, unsigned flags)
 
   if (!(flags & TGL_UPDATE_CREATED)) {
     mprint_start (ev);
-    if (!enable_json) {
+    {
       mpush_color (ev, COLOR_YELLOW);
       mprintf (ev, "User ");
       print_user_name (ev, U->id, (void *)U);
@@ -3240,8 +2981,6 @@ void user_update_gw (struct tgl_state *TLSR, struct tgl_user *U, unsigned flags)
       }
       mprintf (ev, "\n");
       mpop_color (ev);
-    } else {
-      json_peer_update (ev, (void *)U, flags);
     }
     mprint_end (ev);
   }
@@ -3249,12 +2988,6 @@ void user_update_gw (struct tgl_state *TLSR, struct tgl_user *U, unsigned flags)
 
 void chat_update_gw (struct tgl_state *TLSR, struct tgl_chat *U, unsigned flags) {
   assert (TLSR == TLS);
-  #ifdef USE_LUA
-    lua_chat_update (U, flags);
-  #endif
-  #ifdef USE_PYTHON
-    py_chat_update (U, flags);
-  #endif
 
   if (disable_output && !notify_ev) { return; }
   if (!binlog_read) { return; }
@@ -3262,7 +2995,7 @@ void chat_update_gw (struct tgl_state *TLSR, struct tgl_chat *U, unsigned flags)
 
   if (!(flags & TGL_UPDATE_CREATED)) {
     mprint_start (ev);
-    if (!enable_json) {
+    {
       mpush_color (ev, COLOR_YELLOW);
       mprintf (ev, "Chat ");
       print_chat_name (ev, U->id, (void *)U);
@@ -3274,8 +3007,6 @@ void chat_update_gw (struct tgl_state *TLSR, struct tgl_chat *U, unsigned flags)
       }
       mprintf (ev, "\n");
       mpop_color (ev);
-    } else {
-      json_peer_update (ev, (void *)U, flags);
     }
     mprint_end (ev);
   }
@@ -3283,12 +3014,6 @@ void chat_update_gw (struct tgl_state *TLSR, struct tgl_chat *U, unsigned flags)
 
 void secret_chat_update_gw (struct tgl_state *TLSR, struct tgl_secret_chat *U, unsigned flags) {
   assert (TLSR == TLS);
-  #ifdef USE_LUA
-    lua_secret_chat_update (U, flags);
-  #endif
-  #ifdef USE_PYTHON
-    py_secret_chat_update (U, flags);
-  #endif
 
   if ((flags & TGL_UPDATE_WORKING) || (flags & TGL_UPDATE_DELETED)) {
     write_secret_chat_file ();
@@ -3307,7 +3032,7 @@ void secret_chat_update_gw (struct tgl_state *TLSR, struct tgl_secret_chat *U, u
 
   if (!(flags & TGL_UPDATE_CREATED)) {
     mprint_start (ev);
-    if (!enable_json) {
+    {
       mpush_color (ev, COLOR_YELLOW);
       mprintf (ev, "Secret chat ");
       print_encr_chat_name (ev, U->id, (void *)U);
@@ -3319,8 +3044,6 @@ void secret_chat_update_gw (struct tgl_state *TLSR, struct tgl_secret_chat *U, u
       }
       mprintf (ev, "\n");
       mpop_color (ev);
-    } else {
-      json_peer_update (ev, (void *)U, flags);
     }
     mprint_end (ev);
   }
@@ -3344,27 +3067,12 @@ void print_card_gw (struct tgl_state *TLSR, void *extra, int success, int size, 
   }
   if (!success) { print_fail (ev); return; }
   mprint_start (ev);
-  if (!enable_json) {
+  {
     mprintf (ev, "Card: ");
     int i;
     for (i = 0; i < size; i++) {
       mprintf (ev, "%08x%c", card[i], i == size - 1 ? '\n' : ':');
     }
-  } else {
-    #ifdef USE_JSON
-    static char q[1000];
-    int pos = 0;
-    int i;
-    for (i = 0; i < size; i++) {
-      pos += sprintf (q + pos, "%08x%s", card[i], i == size - 1 ? "" : ":");
-    }
-    json_t *res = json_object ();
-    assert (json_object_set_new (res, "result", json_string (q)) >= 0);
-    char *s = json_dumps (res, 0);
-    mprintf (ev, "%s\n", s);
-    json_decref (res);
-    free (s);
-    #endif
   }
   mprint_end (ev);
 }
@@ -3377,18 +3085,7 @@ void callback_extf (struct tgl_state *TLS, void *extra, int success, const char 
   }
   if (!success) { print_fail (ev); return; }
   mprint_start (ev);
-  if (!enable_json) {
-    mprintf (ev, "%s\n", buf);
-  } else {
-    #ifdef USE_JSON
-    json_t *res = json_object ();
-    assert (json_object_set_new (res, "result", json_string (buf)) >= 0);
-    char *s = json_dumps (res, 0);
-    mprintf (ev, "%s\n", s);
-    json_decref (res);
-    free (s);
-    #endif
-  }
+  mprintf (ev, "%s\n", buf);
   mprint_end (ev);
 }
 
@@ -3398,7 +3095,6 @@ void user_status_upd (struct tgl_state *TLS, struct tgl_user *U) {
   if (log_level < 3) { return; }
   struct in_ev *ev = notify_ev;
   mprint_start (ev);
-  if (!enable_json)
   {
     mpush_color (ev, COLOR_YELLOW);
     mprintf (ev, "User ");
@@ -3407,14 +3103,6 @@ void user_status_upd (struct tgl_state *TLS, struct tgl_user *U) {
     print_user_status(&U->status, ev);
     mprintf (ev, "\n");
     mpop_color (ev);
-  } else {
-    #ifdef USE_JSON
-      json_t *res = json_pack_user_status(U);
-      char *s = json_dumps (res, 0);
-      mprintf (ev, "%s\n", s);
-      json_decref (res);
-      free (s);
-    #endif
   }
   mprint_end (ev);
 }
