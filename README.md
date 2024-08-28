@@ -4,11 +4,15 @@ Command-line interface for [Telegram](http://telegram.org). Uses readline interf
 
 > This is a fork of [kenorb's repository](https://github.com/kenorb-contrib/tg), who has been maintaining [vysheng's repository](https://github.com/vysheng/tg) after he discontinued public development of this project.
 
+Note: currently, it is not possible to use this project, due to the [protocol deprecation](https://github.com/kenorb-contrib/tg/issues/64#issuecomment-1637674372).
+
+
 ## API, Protocol documentation
 
 Documentation for Telegram API is available here: <http://core.telegram.org/api>
 
 Documentation for MTproto protocol is available here: <http://core.telegram.org/mtproto>
+
 
 ## Building
 
@@ -23,7 +27,7 @@ git clone --recursive https://github.com/vysheng-telegram-cli/telegram-cli.git &
 Prerequisites:
 
 ```
-sudo apt-get install libreadline-dev libconfig-dev libssl-dev lua5.2 liblua5.2-dev libevent-dev libjansson-dev libpython-dev libpython3-dev libgcrypt-   dev zlib1g-dev lua-lgi make
+sudo apt-get install libreadline-dev libconfig-dev libssl-dev lua5.2 liblua5.2-dev libevent-dev libjansson-dev libpython-dev libpython3-dev libgcrypt-dev zlib1g-dev lua-lgi make
 ```
 
 Compile with CMake:
@@ -35,9 +39,11 @@ cmake ..
 cmake --build .
 ```
 
+
 ## Python Support
 
 Python support is currently limited to Python 2.7 or Python 3.1+. Other versions may work but are not tested.
+
 
 ## Usage
 
@@ -59,6 +65,7 @@ For chats it is it's title with all spaces changed to underscores
 For encrypted chats it is <Exсlamation mark> <underscore> Name <underscore> Lastname with all spaces changed to underscores.
 
 If two or more peers have same name, <sharp>number is appended to the name. (for example A_B, A_B#1, A_B#2 and so on)
+
 
 ## Supported commands
 
@@ -140,6 +147,7 @@ If two or more peers have same name, <sharp>number is appended to the name. (for
 * **quit** - quit
 * **safe_quit** - wait for all queries to end then quit
 * run `telegram-cli -q` to logout from account
+
 
 ## Troubleshooting
 
